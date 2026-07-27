@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0d6efd">
+  <title>WebAPK Installer</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      padding: 20px;
+    }
+    .container {
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+    }
+    .logo {
+      width: 120px;
+      height: 120px;
+      background: white;
+      border-radius: 24px;
+      margin: 0 auto 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 60px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+    h1 { font-size: 28px; margin-bottom: 10px; }
+    p { opacity: 0.9; margin-bottom: 30px; line-height: 1.6; }
+    .btn-install {
+      background: #00d26a;
+      color: white;
+      border: none;
+      padding: 18px 40px;
+      font-size: 18px;
+      font-weight: 600;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,210,106,0.4);
+      transition: all 0.3s;
+      width: 100%;
+      display: none;
+    }
+    .btn-install:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(0,210,106,0.5);
+    }
+    .btn-install.show { display: inline-block; }
+    .status {
+      margin-top: 20px;
+      padding: 12px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 12px;
+      font-size: 14px;
+      backdrop-filter: blur(10px);
+    }
+    .guide {
+      margin-top: 30px;
+      text-align: left;
+      background: rgba(0,0,0,0.2);
+      padding: 20px;
+      border-radius: 16px;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+    .guide code {
+      background: rgba(255,255,255,0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">📱</div>
+    <h1>WebAPK Installer</h1>
+    <p>Nhấn nút bên dưới để cài đặt ứng dụng. Chrome sẽ tạo WebAPK thật từ Google Server.</p>
+    
+    <button id="installBtn" class="btn-install">
+      ⬇️ Tạo & Cài đặt WebAPK
+    </button>
+    
+    <div id="status" class="status">
+      Đang kiểm tra khả năng cài đặt...
+    </div>
+
+    <div class="guide">
+      <strong>📋 Lưu ý quan trọng:</strong><br>
+      • Chỉ hoạt động trên <strong>Chrome Android</strong><br>
+      • Website phải chạy trên <strong>HTTPS</strong><br>
+      • Chrome sẽ tải WebAPK thật từ <strong>Google Server</strong><br>
+      • Không phải file APK giả lập → <strong>không lỗi phân tích cú pháp</strong><br>
+      • Nếu không thấy nút: mở Chrome menu ⋮ → <code>Thêm vào Màn hình chính</code>
+    </div>
+  </div>
+
+  <script>
+    let deferredPrompt;
+    const installBtn = document.getElementById('installBtn');
+    const status = document.getElementById('status');
+
+    // Đăng ký Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+        .then(() => console.log('SW registered'))
+        .catch(err => console.log('SW error:', err));
+    }
+
+    // Bắt sự kiện beforeinstallprompt
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.classList.add('show');
+      status.textContent = '✅ Ứng dụng đã sẵn sàng cài đặt!';
+    });
+
+    // Xử lý nút cài đặt
+    installBtn.addEventListener('click', async () => {
+      if (!deferredPrompt) {
+        status.textContent = '⚠️ Trình duyệt không hỗ trợ prompt. Hãy dùng Chrome Android.';
+        return;
+      }
+      
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      
+      if (outcome === 'accepted') {
+        status.textContent = '🎉 Đang tải WebAPK từ Google... Vui lòng đợi!';
+        installBtn.style.display = 'none';
+      } else {
+        status.textContent = '❌ Bạn đã từ chối cài đặt.';
+      }
+      deferredPrompt = null;
+    });
+
+    // Kiểm tra nếu đã cài đặt
+    window.addEventListener('appinstalled', () => {
+      status.textContent = '✅ WebAPK đã được cài đặt thành công!';
+      installBtn.style.display = 'none';
+      deferredPrompt = null;
+    });
+
+    // Kiểm tra nếu đang chạy dưới dạng standalone
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      status.textContent = '✅ Ứng dụng đang chạy ở chế độ WebAPK!';
+      installBtn.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
